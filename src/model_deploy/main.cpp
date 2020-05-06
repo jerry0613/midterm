@@ -30,27 +30,35 @@ DigitalOut green_led(LED2);
 
 int mode = 0; // 0: play song, 1: list
 int serialCount = 0;
-int cur = 0, cur1 = 0, flag = 0;
+int cur = 0, cur1 = 0, flag = 1, cur2 = 0;
 char serialInBuffer[bufferLength];
+char *change[5] = {"Song1", "Song2", "Song3", "Song4", "Song5"};
 char *name[name_num] = {"Song1", "Song2", "Song3", "Song4"};
 char *state[mode_num] = {"Forward", "Backward", "Song selection", "Change song"};
 
-/*int song[42] = {
-  261, 261, 392, 392, 440, 440, 392,
+int song[4][42] = {
+  {261, 261, 392, 392, 440, 440, 392,
   349, 349, 330, 330, 294, 294, 261,
   392, 392, 349, 349, 330, 330, 294,
   392, 392, 349, 349, 330, 330, 294,
   261, 261, 392, 392, 440, 440, 392,
-  349, 349, 330, 330, 294, 294, 261};*/
-int song[42] = {};
+  349, 349, 330, 330, 294, 294, 261}, 
+  {}, 
+  {}, 
+  {}
+  };
 
-int noteLength[42] = {
+int noteLength[4][42] = {
+  {1, 1, 1, 1, 1, 1, 2,
   1, 1, 1, 1, 1, 1, 2,
   1, 1, 1, 1, 1, 1, 2,
   1, 1, 1, 1, 1, 1, 2,
   1, 1, 1, 1, 1, 1, 2,
-  1, 1, 1, 1, 1, 1, 2,
-  1, 1, 1, 1, 1, 1, 2};
+  1, 1, 1, 1, 1, 1, 2},
+  {},
+  {},
+  {}
+  };
 
 void playNote(int freq)
 {
@@ -108,7 +116,10 @@ void mode_1() {
 
 void mode_0() {
   flag++;
-  if (cur1 == 3) {
+  if (mode == 3) {
+    mode = 4;
+    name[cur] = change[cur2];
+  } else if (cur1 == 3) {
     mode = 3;
   }
   else if (mode == 2 || cur1 != 2) {
@@ -135,8 +146,6 @@ int main(int argc, char* argv[]) {
     green_led = 1;
     sw2.fall(&mode_1);
     sw3.fall(&mode_0);
-    uLCD.locate(5, 5);
-    uLCD.printf("\n%s\n", name[0]);
 
   // Create an area of memory to use for input, output, and intermediate arrays.
   // The size of this will depend on the model you're using, and may need to be
@@ -218,6 +227,7 @@ int main(int argc, char* argv[]) {
       if (mode == 0 && flag == 1) {
           uLCD.cls();
           uLCD.locate(5, 5);
+          uLCD.printf("\nSong NO.%d\n", cur+1);
           uLCD.printf("\n%s\n", name[cur]);
           flag = 0;
       }
@@ -225,18 +235,18 @@ int main(int argc, char* argv[]) {
       if (mode == 0) {
         for(int i = 0; i < 42 && mode == 0; i++)
         {
-          int length = noteLength[i];
+          int length = noteLength[cur][i];
           while(length-- && mode == 0)
           {
             // the loop below will play the note for the duration of 1s
             for(int j = 0; j < kAudioSampleFrequency / kAudioTxBufferSize && mode == 0; ++j)
             {
-              playNote(song[i]);
+              playNote(song[cur][i]);
               /*uLCD.cls();
               uLCD.locate(5, 5);
               uLCD.printf("\n%d\n", song[i]);*/
             }
-            for (int k = 0; k < 100; k++)
+            for (int k = 0; k < 100 && length < 1; k++)
               playNote(0);
           }
         }
@@ -303,6 +313,7 @@ int main(int argc, char* argv[]) {
             uLCD.cls();
             uLCD.locate(5, 5);
             uLCD.printf("\nSong selection\n");
+            uLCD.printf("\nSong NO.%d\n", cur+1);
             uLCD.printf("\n%s\n", name[cur]);
         }
         if (gesture_index == 0) {
@@ -313,6 +324,7 @@ int main(int argc, char* argv[]) {
           uLCD.cls();
           uLCD.locate(5, 5);
           uLCD.printf("\nSong selection\n");
+          uLCD.printf("\nSong NO.%d\n", cur+1);
           uLCD.printf("\n%s\n", name[cur]);
 
         } else if (gesture_index == 1) {
@@ -323,18 +335,68 @@ int main(int argc, char* argv[]) {
           uLCD.cls();
           uLCD.locate(5, 5);
           uLCD.printf("\nSong selection\n");
+          uLCD.printf("\nSong NO.%d\n", cur+1);
           uLCD.printf("\n%s\n", name[cur]);
         } 
     }
 
     if (mode == 3) {
+        if (flag == 1) {
+            flag = 0;
+            uLCD.cls();
+            uLCD.locate(5, 5);
+            uLCD.printf("\nExchang song\n");
+            uLCD.printf("\n%s\n", change[cur2]);
+        }
+        if (gesture_index == 0) {
+          if (cur2 > 0)
+            cur2--;
+          else
+            cur2 = 4;
+          uLCD.cls();
+          uLCD.locate(5, 5);
+          uLCD.printf("\nExchang song\n");
+          uLCD.printf("\n%s\n", change[cur2]);
+
+        } else if (gesture_index == 1) {
+          if (cur2 < 4)
+            cur2++;
+          else
+            cur2 = 0;
+          uLCD.cls();
+          uLCD.locate(5, 5);
+          uLCD.printf("\nExchang song\n");
+          uLCD.printf("\n%s\n", change[cur2]);
+        } 
+    }
+
+    if (mode == 4) {
       uLCD.cls();
       uLCD.locate(5, 5);
       uLCD.printf("\nLoading song\n");
+      
       green_led = 0;
       int i = 0;
       serialCount = 0;
       audio.spk.pause();
+      while(i < 42)
+      {
+        pc.printf("%d\r\n", cur2);
+        if(pc.readable())
+        {
+          serialInBuffer[serialCount] = pc.getc();
+          serialCount++;
+
+          if(serialCount == 3)
+          {
+            serialInBuffer[serialCount] = '\0';
+            song[cur][i] = (int) atoi(serialInBuffer);
+            serialCount = 0;
+            i++;
+          }
+        }
+      }
+
       while(i < 42)
       {
         if(pc.readable())
@@ -345,7 +407,7 @@ int main(int argc, char* argv[]) {
           if(serialCount == 3)
           {
             serialInBuffer[serialCount] = '\0';
-            song[i] = (int) atoi(serialInBuffer);
+            noteLength[cur][i] = (int) atoi(serialInBuffer);
             serialCount = 0;
             i++;
           }
