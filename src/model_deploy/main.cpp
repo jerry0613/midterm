@@ -29,7 +29,7 @@ Serial pc(USBTX, USBRX);
 DigitalOut green_led(LED2);
 
 int mode = 0; // 0: play song, 1: list
-int serialCount = 0;
+int serialCount = 0, score = 0;
 int cur = 0, cur1 = 0, flag = 1, cur2 = 0;
 char serialInBuffer[bufferLength];
 char *change[5] = {"Song1", "Song2", "Song3", "Song4", "Song5"};
@@ -59,6 +59,15 @@ int noteLength[4][42] = {
   {},
   {}
   };
+
+int note[42] = {
+  1, 2, 1, 1, 2, 1, 1,
+  1, 2, 1, 2, 1, 1, 1,
+  1, 1, 1, 2, 1, 1, 2,
+  2, 1, 1, 1, 2, 1, 1,
+  1, 2, 1, 2, 1, 2, 1,
+  1, 1, 1, 1, 1, 2, 2
+};
 
 void playNote(int freq)
 {
@@ -142,31 +151,21 @@ void mode_0() {
     mode = 2;
 }
 
-int main(int argc, char* argv[]) {
-    green_led = 1;
-    sw2.fall(&mode_1);
-    sw3.fall(&mode_0);
+int main(int argc, char* argv[]) { 
+   
+  green_led = 1;
+  sw2.fall(&mode_1);
+  sw3.fall(&mode_0);
 
-  // Create an area of memory to use for input, output, and intermediate arrays.
-  // The size of this will depend on the model you're using, and may need to be
-  // determined by experimentation.
   constexpr int kTensorArenaSize = 60 * 1024;
   uint8_t tensor_arena[kTensorArenaSize];
-
-  // Whether we should clear the buffer next time we fetch data
   bool should_clear_buffer = false;
   bool got_data = false;
-
-  // The gesture index of the prediction
   int gesture_index;
-
-  // Set up logging.
   static tflite::MicroErrorReporter micro_error_reporter;
   tflite::ErrorReporter* error_reporter = &micro_error_reporter;
-
-  // Map the model into a usable data structure. This doesn't involve any
-  // copying or parsing, it's a very lightweight operation.
   const tflite::Model* model = tflite::GetModel(g_magic_wand_model_data);
+
   if (model->version() != TFLITE_SCHEMA_VERSION) {
     error_reporter->Report(
         "Model provided is schema version %d not equal "
@@ -175,12 +174,8 @@ int main(int argc, char* argv[]) {
     return -1;
   }
 
-  // Pull in only the operation implementations we need.
-  // This relies on a complete list of all the ops needed by this graph.
-  // An easier approach is to just use the AllOpsResolver, but this will
-  // incur some penalty in code space for op implementations that are not
-  // needed by this graph.
   static tflite::MicroOpResolver<6> micro_op_resolver;
+
   micro_op_resolver.AddBuiltin(
       tflite::BuiltinOperator_DEPTHWISE_CONV_2D,
       tflite::ops::micro::Register_DEPTHWISE_CONV_2D());
@@ -222,36 +217,18 @@ int main(int argc, char* argv[]) {
   }
 
   error_reporter->Report("Set up successful...\n");
-    
+
   while (true) {
       if (mode == 0 && flag == 1) {
           uLCD.cls();
-          uLCD.locate(5, 5);
-          uLCD.printf("\nSong NO.%d\n", cur+1);
-          uLCD.printf("\n%s\n", name[cur]);
+          uLCD.printf("Song NO.%d   Score\n", cur+1);
+          uLCD.printf("%s        %d\n", name[cur], score);
           flag = 0;
+          uLCD.line(0, 20, 200, 20, GREEN);
+          uLCD.line(0, 120, 200, 120, GREEN);
       }
 
-      if (mode == 0) {
-        for(int i = 0; i < 42 && mode == 0; i++)
-        {
-          int length = noteLength[cur][i];
-          while(length-- && mode == 0)
-          {
-            // the loop below will play the note for the duration of 1s
-            for(int j = 0; j < kAudioSampleFrequency / kAudioTxBufferSize && mode == 0; ++j)
-            {
-              playNote(song[cur][i]);
-              /*uLCD.cls();
-              uLCD.locate(5, 5);
-              uLCD.printf("\n%d\n", song[i]);*/
-            }
-            for (int k = 0; k < 100 && length < 1; k++)
-              playNote(0);
-          }
-        }
-      }
-    // Attempt to read new data from the accelerometer
+      // Attempt to read new data from the accelerometer
     got_data = ReadAccelerometer(error_reporter, model_input->data.f,
                                  input_length, should_clear_buffer);
 
@@ -274,11 +251,55 @@ int main(int argc, char* argv[]) {
 
     // Clear the buffer next time we read data
     should_clear_buffer = gesture_index < label_num;
-
     // Produce an output
     if (gesture_index < label_num) {
       error_reporter->Report(config.output_message[gesture_index]);
     }
+
+
+      if (mode == 0) {
+        for(int i = 0; i < 42 && mode == 0; i++)
+        {
+          int length = noteLength[cur][i];
+          while(length-- && mode == 0)
+          {
+            // the loop below will play the note for the duration of 1s
+            for(int j = 0; j < kAudioSampleFrequency / kAudioTxBufferSize && mode == 0; ++j)
+            {
+              playNote(song[cur][i]);
+              
+            }
+            
+            //pc.printf("%d", song[cur][i]);
+
+            for (int j = 1; j < 101 && length < 1 && mode == 0; j++) {
+                playNote(0);
+                /*if (note[i] == 2)
+                    uLCD.line(30, 20+j, 100, 20+j, RED);
+                else if (note[i] == 1)
+                    uLCD.line(30, 20+j, 100, 20+j, BLUE);
+                
+                if (j > 1)
+                  uLCD.line(30, 19+j, 100, 19+j, 0);
+                else
+                  uLCD.line(30, 120, 100, 120, GREEN);
+
+                uLCD.locate(0, 5);
+                uLCD.printf("%d", gesture_index);
+
+                if (j >= 90) {
+                  uLCD.line(30, 120, 100, 120, GREEN);
+                  if (gesture_index != 2) {
+                    score += 10;
+                    uLCD.locate(0, 1);
+                    uLCD.printf("%s        %d\n", name[cur], score);
+                  }
+                }*/
+            }
+          }
+        }
+      }
+    pc.printf("%d", gesture_index);
 
     if (mode == 1) { // mode 1
         if (flag == 1) {

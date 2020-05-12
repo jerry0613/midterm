@@ -58,7 +58,7 @@ static int16_t acc16;
 
 // A buffer holding the last 200 sets of 3-channel values
 
-static float save_data[600] = {0.0};
+static float save_data[240] = {0.0};
 
 // Most recent position in the save_data buffer
 
@@ -120,7 +120,7 @@ bool ReadAccelerometer(tflite::ErrorReporter* error_reporter, float* input,
 
   if (reset_buffer) {
 
-    memset(save_data, 0, 600 * sizeof(float));
+    memset(save_data, 0, 240 * sizeof(float));
 
     begin_index = 0;
 
@@ -185,7 +185,7 @@ bool ReadAccelerometer(tflite::ErrorReporter* error_reporter, float* input,
 
   // If we reached the end of the circle buffer, reset
 
-  if (begin_index >= 600) {
+  if (begin_index >= 240) {
 
     begin_index = 0;
 
