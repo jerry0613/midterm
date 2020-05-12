@@ -21,22 +21,16 @@ signalTable = [
   392, 392, 349, 349, 330, 330, 294,
   261, 261, 392, 392, 440, 440, 392,
   349, 349, 330, 330, 294, 294, 261],
-  [],
-  [],
-  [],
-  []]
+]
 
 noteTable = [
- [1, 1, 1, 1, 1, 1, 2,
-  1, 1, 1, 1, 1, 1, 2,
-  1, 1, 1, 1, 1, 1, 2,
-  1, 1, 1, 1, 1, 1, 2,
-  1, 1, 1, 1, 1, 1, 2,
-  1, 1, 1, 1, 1, 1, 2],
-  [],
-  [],
-  [],
-  []]
+ [101, 101, 101, 101, 101, 101, 102,
+  101, 101, 101, 101, 101, 101, 102,
+  101, 101, 101, 101, 101, 101, 102,
+  101, 101, 101, 101, 101, 101, 102,
+  101, 101, 101, 101, 101, 101, 102,
+  101, 101, 101, 101, 101, 101, 102],
+]
 
 
 # output formatter
@@ -45,21 +39,18 @@ formatter = lambda x: "%d" % x
 
 serdev = '/dev/ttyACM0'
 s = serial.Serial(serdev)
-line=s.readline()
-cur = int(line)
+cur = int (input())
 
 print("Sending Song%d" % (cur+1))
 
 print("It may take about %d seconds ..." % (int(signalLength * waitTime * 2)))
 
 for data in signalTable[cur]:
-
   s.write(bytes(formatter(data), 'UTF-8'))
 
   time.sleep(waitTime)
 
 for data in noteTable[cur]:
-
   s.write(bytes(formatter(data), 'UTF-8'))
 
   time.sleep(waitTime)

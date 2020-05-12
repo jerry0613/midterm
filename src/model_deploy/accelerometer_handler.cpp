@@ -56,7 +56,7 @@ static uint8_t data[2], res[6];
 static int16_t acc16;
 
 
-// A buffer holding the last 200 sets of 3-channel values
+// A buffer holding the last 60 sets of 3-channel values
 
 static float save_data[240] = {0.0};
 
@@ -194,7 +194,7 @@ bool ReadAccelerometer(tflite::ErrorReporter* error_reporter, float* input,
 
   // Check if we are ready for prediction or still pending more initial data
 
-  if (pending_initial_data && begin_index >= 200) {
+  if (pending_initial_data && begin_index >= 80) {
 
     pending_initial_data = false;
 
@@ -218,7 +218,7 @@ bool ReadAccelerometer(tflite::ErrorReporter* error_reporter, float* input,
 
     if (ring_array_index < 0) {
 
-      ring_array_index += 600;
+      ring_array_index += 240;
 
     }
 
