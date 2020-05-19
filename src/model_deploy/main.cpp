@@ -17,7 +17,7 @@
 
 #define bufferLength (32)
 #define signalLength 84
-#define mode_num 4
+#define mode_num 5
 #define name_num 4
 #define do 261
 #define re 294
@@ -37,12 +37,13 @@ Serial pc(USBTX, USBRX);
 DigitalOut green_led(LED2);
 
 int mode = 0; // 0: play song, 1: list
-int serialCount = 0, score = 0, first = 0;
-int cur = 0, cur1 = 0, flag = 1, cur2 = 0;
+int serialCount = 0, score = 0;
+int cur = 0, cur1 = 0, flag = 1, cur2 = 0, first = 0;
 char serialInBuffer[bufferLength];
 char *change[5] = {"Song1", "Song2", "Song3", "Song4", "Song5"};
 char *name[name_num] = {"Song1", "Song2", "Song3", "Song4"};
-char *state[mode_num] = {"Forward", "Backward", "Song selection", "Change song"};
+char *state[mode_num] = {"Forward", "Backward", "Song selection", "Change song", "Back"};
+char temp[20];
 
 int song[4][42] = {
   {261, 261, 392, 392, 440, 440, 392,
@@ -77,12 +78,12 @@ int noteLength[4][42] = {
   };
 
 int note[42] = {
-  0, 2, 1, 1, 2, 1, 1,
-  1, 2, 1, 2, 1, 1, 1,
-  1, 1, 1, 2, 1, 1, 2,
-  2, 1, 1, 1, 2, 1, 1,
-  1, 2, 1, 2, 1, 2, 1,
-  1, 1, 1, 1, 1, 2, 2
+  0, 0, 1, 0, 0, 1, 0,
+  0, 2, 0, 0, 1, 0, 0,
+  2, 0, 0, 2, 0, 0, 2,
+  0, 0, 1, 0, 0, 1, 0,
+  0, 1, 0, 0, 2, 0, 0,
+  1, 0, 0, 2, 0, 0, 0
 };
 
 
@@ -95,20 +96,20 @@ void playNote(int freq)
   audio.spk.play(waveform, kAudioTxBufferSize);
 }
 
-// Return the result of the last prediction
 int PredictGesture(float* output) {
   // How many times the most recent gesture has been matched in a row
   static int continuous_count = 0;
-  // The result of the last predictio
+  // The result of the last prediction
   static int last_predict = -1;
 
   // Find whichever output has a probability > 0.8 (they sum to 1)
   int this_predict = -1;
   for (int i = 0; i < label_num; i++) {
-    if (output[i] > 0.8) this_predict = i;
+    if (output[i] > 0.7) this_predict = i;
   }
 
   // No gesture was detected above the threshold
+
   if (this_predict == -1) {
     continuous_count = 0;
     last_predict = label_num;
@@ -137,7 +138,7 @@ int PredictGesture(float* output) {
 
 void mode_1() {
   mode = 1;
-  flag++;
+  flag = 1;
 }
 
 void mode_0() {
@@ -151,13 +152,13 @@ void mode_0() {
   else if (mode == 2 || cur1 != 2) {
     mode = 0;
     if (cur1 == 0) {
-        if (cur < mode_num - 1)
+        if (cur < name_num - 1)
             cur++;
         else
             cur = 0;
     } else if (cur1 == 1) {
         if (cur == 0)
-            cur = mode_num - 1;
+            cur = name_num - 1;
         else
         {
             cur--;
@@ -168,7 +169,7 @@ void mode_0() {
     mode = 2;
 }
 
-/*constexpr int kTensorArenaSize = 60 * 1024;
+constexpr int kTensorArenaSize = 60 * 1024;
   uint8_t tensor_arena[kTensorArenaSize];
   bool should_clear_buffer = false;
   bool got_data = false;
@@ -185,18 +186,18 @@ void mode_0() {
   TfLiteStatus setup_status = SetupAccelerometer(error_reporter);
 
 void gesture() {
-  
+  while(1) {
     got_data = ReadAccelerometer(error_reporter, model_input->data.f,
                                  input_length, should_clear_buffer);
     if (!got_data) {
       should_clear_buffer = false;
-      //continue;
+      continue;
     }
 
     TfLiteStatus invoke_status = interpreter->Invoke();
     if (invoke_status != kTfLiteOk) {
       error_reporter->Report("Invoke failed on index: %d\n", begin_index);
-      //continue;
+      continue;
     }
 
     gesture_index = PredictGesture(interpreter->output(0)->data.f);
@@ -205,8 +206,8 @@ void gesture() {
     if (gesture_index < label_num) {
       error_reporter->Report(config.output_message[gesture_index]);
     }
-  
-}*/
+  }
+}
 
 int main(int argc, char* argv[]) { 
    
@@ -214,15 +215,20 @@ int main(int argc, char* argv[]) {
   sw2.fall(&mode_1);
   sw3.fall(&mode_0);
 
-  constexpr int kTensorArenaSize = 60 * 1024;
+  /*constexpr int kTensorArenaSize = 60 * 1024;
   uint8_t tensor_arena[kTensorArenaSize];
+
+  // Whether we should clear the buffer next time we fetch data
   bool should_clear_buffer = false;
   bool got_data = false;
+
+  // The gesture index of the prediction
   int gesture_index;
+
+  // Set up logging.
   static tflite::MicroErrorReporter micro_error_reporter;
   tflite::ErrorReporter* error_reporter = &micro_error_reporter;
-  const tflite::Model* model = tflite::GetModel(g_magic_wand_model_data);
-
+  const tflite::Model* model = tflite::GetModel(g_magic_wand_model_data);*/
   if (model->version() != TFLITE_SCHEMA_VERSION) {
     error_reporter->Report(
         "Model provided is schema version %d not equal "
@@ -231,8 +237,7 @@ int main(int argc, char* argv[]) {
     return -1;
   }
 
-  static tflite::MicroOpResolver<6> micro_op_resolver;
-
+ // static tflite::MicroOpResolver<6> micro_op_resolver;
   micro_op_resolver.AddBuiltin(
       tflite::BuiltinOperator_DEPTHWISE_CONV_2D,
       tflite::ops::micro::Register_DEPTHWISE_CONV_2D());
@@ -247,16 +252,16 @@ int main(int argc, char* argv[]) {
   micro_op_resolver.AddBuiltin(tflite::BuiltinOperator_RESHAPE,
                              tflite::ops::micro::Register_RESHAPE(), 1);
 
-  // Build an interpreter to run the model with
-  static tflite::MicroInterpreter static_interpreter(
+  /*static tflite::MicroInterpreter static_interpreter(
       model, micro_op_resolver, tensor_arena, kTensorArenaSize, error_reporter);
-  tflite::MicroInterpreter* interpreter = &static_interpreter;
+  tflite::MicroInterpreter* interpreter = &static_interpreter;*/
 
   // Allocate memory from the tensor_arena for the model's tensors
   interpreter->AllocateTensors();
 
   // Obtain pointer to the model's input tensor
-  TfLiteTensor* model_input = interpreter->input(0);
+  //TfLiteTensor* model_input = interpreter->input(0);
+
   if ((model_input->dims->size != 4) || (model_input->dims->data[0] != 1) ||
       (model_input->dims->data[1] != config.seq_length) ||
       (model_input->dims->data[2] != kChannelNumber) ||
@@ -265,9 +270,9 @@ int main(int argc, char* argv[]) {
     return -1;
   }
 
-  int input_length = model_input->bytes / sizeof(float);
+  //int input_length = model_input->bytes / sizeof(float);
 
-  TfLiteStatus setup_status = SetupAccelerometer(error_reporter);
+  //TfLiteStatus setup_status = SetupAccelerometer(error_reporter);
   if (setup_status != kTfLiteOk) {
     error_reporter->Report("Set up failed\n");
     return -1;
@@ -275,31 +280,22 @@ int main(int argc, char* argv[]) {
 
   error_reporter->Report("Set up successful...\n");
 
-  //Thread t(osPriorityNormal, 100 * 1024);
-  //t.start(gesture);
+  Thread t(osPriorityNormal, 100 * 1024);
+  t.start(gesture);
 
   while (true) {
-      if (mode == 0 && flag == 1) {
-          uLCD.cls();
-          uLCD.printf("Song NO.%d   Score\n", cur+1);
-          score = 0;
-          uLCD.printf("%s        %d\n", name[cur], score);
-          flag = 0;
-          uLCD.line(0, 20, 200, 20, GREEN);
-          uLCD.line(0, 120, 200, 120, GREEN);
-      }
-
-      got_data = ReadAccelerometer(error_reporter, model_input->data.f,
+      
+      /*got_data = ReadAccelerometer(error_reporter, model_input->data.f,
                                  input_length, should_clear_buffer);
       if (!got_data) {
         should_clear_buffer = false;
-        //continue;
+        continue;
       }
 
       TfLiteStatus invoke_status = interpreter->Invoke();
       if (invoke_status != kTfLiteOk) {
         error_reporter->Report("Invoke failed on index: %d\n", begin_index);
-        //continue;
+        continue;
       }
 
       gesture_index = PredictGesture(interpreter->output(0)->data.f);
@@ -307,73 +303,72 @@ int main(int argc, char* argv[]) {
       should_clear_buffer = gesture_index < label_num;
       if (gesture_index < label_num) {
         error_reporter->Report(config.output_message[gesture_index]);
-      }
+      }*/
 
       if (mode == 0) {
+        if (flag == 1) {
+          uLCD.cls();
+          uLCD.printf("Song NO.%d   Score\n", cur+1);
+          score = 0;
+          uLCD.printf("%s        %d\n", name[cur], score);
+          flag = 0;
+          uLCD.line(0, 20, 200, 20, GREEN);
+          uLCD.line(0, 120, 200, 120, GREEN);
+        }
+
         score = 0;
+        int det = 0;
+        
         for(int i = 0; i < 42 && mode == 0; i++)
         {
           int length = noteLength[cur][i];
           while(length-- && mode == 0)
-          {
+          { 
+            
             for(int j = 0; j < kAudioSampleFrequency / kAudioTxBufferSize && mode == 0; ++j)
-              playNote(song[cur][i]);
+              playNote(song[cur][i]);  
 
-            for (int j = 4; j < 101 && length < 1 && mode == 0; j += 8) {
-                playNote(0);
+            if (length < 1)
+              playNote(0);
+            det = 0;
+
+            for (int k = 1; k < 21 && length < 1 && mode == 0; k++) {
                 if (note[i] == 2)
-                    uLCD.line(30, 20+j, 100, 20+j, RED);
+                    uLCD.line(30, 20+k*5, 100, 20+k*5, RED);
                 else if (note[i] == 1)
-                    uLCD.line(30, 20+j, 100, 20+j, BLUE);
+                    uLCD.line(30, 20+k*5, 100, 20+k*5, BLUE);
                 
-                if (j > 1)
-                  uLCD.line(30, 20+j-8, 100, 20+j-8, 0);
-                else
-                  uLCD.line(30, 120, 100, 120, GREEN);
-
+                if (k > 1)
+                  uLCD.line(30, 20+k*5-5, 100, 20+k*5-5, 0);
+  
                 uLCD.locate(0, 5);
                 uLCD.printf("%d", gesture_index);
 
-                if (j >= 90) {
-                  uLCD.line(30, 120, 100, 120, GREEN);
-                  if (gesture_index+1 == note[i]) {
+                if (!det && k > 17) {
+                  if ((gesture_index == 1 && note[i] == 1) ||
+                      (gesture_index == 0 && note[i] == 2)) {
                     score += 10;
                     uLCD.locate(0, 1);
                     uLCD.printf("%s        %d\n", name[cur], score);
-                    //break;
+                    uLCD.line(30, 20+k*5, 100, 20+k*5, 0);
+                    det++;
                   }
                 }
-                
-                got_data = ReadAccelerometer(error_reporter, model_input->data.f,
-                                 input_length, should_clear_buffer);
-                if (!got_data) {
-                  should_clear_buffer = false;
-                  continue;
-                }
-
-                TfLiteStatus invoke_status = interpreter->Invoke();
-                if (invoke_status != kTfLiteOk) {
-                  error_reporter->Report("Invoke failed on index: %d\n", begin_index);
-                  continue;
-                }
-
-                gesture_index = PredictGesture(interpreter->output(0)->data.f);
-
-                should_clear_buffer = gesture_index < label_num;
+                if (k == 20)
+                  uLCD.line(30, 120, 100, 120, GREEN);
             }
           }
         }
-      }
+        mode = 1;
+        flag = 1;
+    }
 
     if (mode == 1) { // mode 1
         if (flag == 1) {
-          for (int i = 0; i < 42; i++)
-            pc.printf("%d ", song[cur][i]);
-          pc.printf("\n");
-          for (int i = 0; i < 42; i++)
-            pc.printf("%d ", noteLength[cur][i]);
-
+          /*for (int i = 0; i < 20; i++)
+            pc.printf("%d ", temp[i]);*/
           uLCD.cls();
+          uLCD.printf("Your score %d", score);
           uLCD.locate(5, 5);
           uLCD.printf("\n%s\n", state[cur1]);
           flag = 0;
@@ -475,11 +470,10 @@ int main(int argc, char* argv[]) {
         pc.getc();
       }
     
-      int term;
 
       if (first)
-        i += 2;
-
+       i += 2;
+      //int j = 0;
       first = 1;
 
       while(i < 44)
@@ -487,7 +481,9 @@ int main(int argc, char* argv[]) {
         if(pc.readable())
         {
           serialInBuffer[serialCount] = pc.getc();
-
+          //temp[j] = serialInBuffer[serialCount];
+          //j++;
+          
           serialCount++;
 
           if(serialCount == 3)
